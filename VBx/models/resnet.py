@@ -11,8 +11,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import math
-
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -117,7 +115,7 @@ class ResNet(nn.Module):
             self.embedding = nn.Linear(int(feat_dim/8) * m_channels * 16 * block.expansion, embed_dim)
         else:
             raise ValueError(f'Unexpected class {type(block)}.')
-           
+
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -142,7 +140,27 @@ class ResNet(nn.Module):
                          torch.flatten(pooling_std, start_dim=1)), 1)
 
         embedding = self.embedding(out)
-        return embedding 
+        return embedding
+
+
+    def forward_frontend(self, x):
+        x = x.unsqueeze_(1)
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        return out
+
+
+    def forward_backend(self, x):
+        pooling_mean = torch.mean(x, dim=-1)
+        meansq = torch.mean(x * x, dim=-1)
+        pooling_std = torch.sqrt(meansq - pooling_mean ** 2 + 1e-10)
+        out = torch.cat((torch.flatten(pooling_mean, start_dim=1),
+                         torch.flatten(pooling_std, start_dim=1)), 1)
+        embedding = self.embedding(out)
+        return embedding.data.cpu().numpy()[0]
 
 
 def ResNet101(feat_dim, embed_dim, squeeze_excitation=False):
