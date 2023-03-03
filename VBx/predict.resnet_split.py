@@ -174,12 +174,19 @@ if __name__ == '__main__':
                                 fea = features.cmvn_floating_kaldi(fea, LC, RC, norm_vars=False).astype(np.float32)
 
                                 slen = len(fea)
-                                start = -seg_jump
+
+                                # #####################################
+                                data = torch.from_numpy(fea).to(device)
+                                data = data[None, :, :]
+                                data = torch.transpose(data, 1, 2)
+                                fea = model.forward_frontend(data)
+                                # #####################################
 
                                 for start in range(0, slen - seg_len, seg_jump):
-                                    data = fea[:, :, :, start:start + seg_len]
-                                    xvector = get_embedding(
-                                        data, model, label_name=label_name, input_name=input_name, backend=args.backend)
+                                    data = fea[:, :, :, start//8:start//8 + seg_len//8]
+                                    # xvector = get_embedding(
+                                    #     data, model, label_name=label_name, input_name=input_name, backend=args.backend)
+                                    xvector = model.forward_backend(data)
 
                                     key = f'{fn}_{segnum:04}-{start:08}-{(start + seg_len):08}'
                                     if np.isnan(xvector).any():
@@ -193,9 +200,10 @@ if __name__ == '__main__':
                                         kaldi_io.write_vec_flt(ark_file, xvector, key=key)
 
                                 if slen - start - seg_jump >= 10:
-                                    data = fea[:, :, :, start + seg_jump:slen]
-                                    xvector = get_embedding(
-                                        data, model, label_name=label_name, input_name=input_name, backend=args.backend)
+                                    data = fea[:, :, :, start//8 + seg_jump//8:slen//8]
+                                    # xvector = get_embedding(
+                                    #     data, model, label_name=label_name, input_name=input_name, backend=args.backend)
+                                    xvector = model.forward_backend(data)
 
                                     key = f'{fn}_{segnum:04}-{(start + seg_jump):08}-{slen:08}'
 
