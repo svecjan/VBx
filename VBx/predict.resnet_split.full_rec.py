@@ -174,6 +174,7 @@ if __name__ == '__main__':
                                 fea = features.cmvn_floating_kaldi(fea, LC, RC, norm_vars=False).astype(np.float32)
 
                                 slen = len(fea)
+                                start = -seg_jump
 
                                 # #####################################
                                 data = torch.from_numpy(fea).to(device)
